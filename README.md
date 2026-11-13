@@ -14,19 +14,32 @@ Hiking 是一个可自托管的中文徒步日志。用它管理计划路线与�
 
 ## 截图
 
-截图取自实际界面，使用虚构轨迹、模拟运动数据和模拟底图。
+截图取自真实徒步记录，使用天地图卫星影像与 Terrarium 高程数据。图中可辨认的人脸已打码，活动日期和心率等个人信息已隐藏。
 
-### 路线库
+### 豆腐皮古道大环线 · 3D 徒步回放
 
-![Hiking 路线库，包含筛选器、路线缩略图和关联记录统计](docs/screenshots/library.png)
+镜头沿山脊跟随轨迹。走到拍摄点时，右侧自动显示对应的照片。
 
-### 徒步记录详情
+![豆腐皮古道大环线的 3D 回放，右侧自动显示山脊远眺的照片](docs/screenshots/replay.png)
 
-![徒步记录详情，包含地形地图、轨迹和海拔、心率、速度曲线](docs/screenshots/track.png)
+<details>
+<summary>查看回放继续前进后的照片</summary>
+
+![回放继续前进后，右侧切换为俯瞰群山的照片](docs/screenshots/replay-next.png)
+
+</details>
+
+### 记录详情
+
+![豆腐皮古道大环线的 3D 卫星地形、沿途照片标记和海拔曲线](docs/screenshots/track.png)
 
 ### 多轨迹地图
 
-![同一张地图上用不同颜色叠加展示计划路线和徒步记录](docs/screenshots/map.png)
+![在同一张卫星地图上叠加豆腐皮古道大环线的计划路线、实走轨迹与九溪路线](docs/screenshots/map.png)
+
+### 路线库
+
+![路线库展示豆腐皮古道大环线、九溪和径山寺的卫星缩略图与关联记录统计](docs/screenshots/library.png)
 
 ## 快速开始
 
