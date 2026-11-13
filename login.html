@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='28'%3EH%3C/text%3E%3C/svg%3E"><title>登录 · Hiking</title><link rel="stylesheet" href="style.css"></head>
+<body class="login-page"><main class="login-card"><span class="brand-icon" aria-hidden="true"></span><h1>Hiking</h1><p>登录路线库</p><form id="login"><label for="password">访问密码</label><input id="password" type="password" autocomplete="current-password" required autofocus maxlength="1024"><button type="submit">登录</button><p id="error" role="alert"></p></form><small>路线、记录和身体数据仅在登录后可见。</small></main>
+<script>
+document.getElementById('login').addEventListener('submit',async event=>{
+ event.preventDefault();const button=event.target.querySelector('button');button.disabled=true;
+ try{const response=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json','X-Hiking-Request':'1'},body:JSON.stringify({password:document.getElementById('password').value})});const data=await response.json();if(!response.ok)throw new Error(data.error);location.replace('/');}
+ catch(error){document.getElementById('error').textContent=error.message;}finally{button.disabled=false;}
+});
+</script></body></html>

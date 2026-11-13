@@ -1,0 +1,16 @@
+[Unit]
+Description=Hiking private trail journal
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=@PROJECT_DIR@
+ExecStart="@PROJECT_DIR@/.venv/bin/python" -m backend.server
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

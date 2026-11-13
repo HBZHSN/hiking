@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='28'%3EH%3C/text%3E%3C/svg%3E"><title>路线库 · Hiking</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header class="header">
+  <div id="header-library" class="header-default">
+    <a class="brand" href="./">Hiking</a><span class="header-spacer"></span>
+    <a id="system-settings" href="settings.html">系统设置</a><a href="credits.html" target="_blank" rel="noreferrer">数据来源</a><button id="logout" class="quiet">退出登录</button>
+  </div>
+  <div id="header-detail" class="header-detail" hidden>
+    <button id="back-library" class="quiet">← 路线库</button>
+    <div class="detail-title"><h1 id="route-name" tabindex="-1">请选择路线</h1><span id="route-location" class="route-location" hidden></span></div>
+    <div class="actions"><button id="parent-route" class="quiet" hidden>所属路线</button><button id="open-edit">编辑</button><button id="export-item">导出 GPX</button><button id="open-share" class="primary">分享</button></div>
+  </div>
+</header>
+<main>
+<p id="share-status" class="hint" role="status" hidden></p>
+<section id="library-view" aria-label="路线库">
+  <div class="page-heading"><h1>路线库</h1><button id="open-import" class="primary">导入文件</button></div>
+  <div id="library-summary" class="library-summary"></div>
+  <div class="library-navigation">
+    <div class="library-tabs" role="group" aria-label="内容类型"><button id="routes-tab" class="active" aria-pressed="true">路线</button><button id="records-tab" aria-pressed="false">记录</button></div>
+    <span id="result-count" role="status"></span>
+    <div class="segmented view-switch" role="group" aria-label="展示方式"><button id="cards-view" class="active" aria-pressed="true">卡片</button><button id="table-view" aria-pressed="false">表格</button></div>
+  </div>
+  <div class="library-tools">
+    <label class="search-label"><span class="sr-only">搜索名称、地区或备注</span><input id="search" type="search" placeholder="搜索名称、地区或备注"></label>
+    <label class="sort-label"><span class="sr-only">排序方式</span><select id="sort">
+      <option value="default">默认排序</option><option value="date">活动日期 · 从新到旧</option><option value="newest">导入时间 · 从新到旧</option><option value="name">名称 · A → Z</option><option value="distance">距离 · 从长到短</option><option value="ascent">爬升 · 从高到低</option><option value="difficulty">难度 · 从高到低</option>
+    </select></label>
+    <button id="sort-direction" aria-label="切换为升序" title="切换为升序"><span id="sort-direction-label" class="sr-only">降序</span><span id="sort-direction-arrow" aria-hidden="true">↓</span></button>
+    <button id="reset-filters" class="quiet" hidden>清除筛选</button>
+  </div>
+  <div id="quick-filters" class="quick-filters" aria-label="快捷筛选">
+    <div class="quick-filter-group" role="group" aria-label="攀爬状态">
+      <span class="quick-filter-label">状态</span>
+      <div class="segmented" id="filter-status-group">
+        <button type="button" id="filter-status-all" class="active" aria-pressed="true">全部</button>
+        <button type="button" id="filter-status-unhiked" aria-pressed="false">未爬过</button>
+        <button type="button" id="filter-status-hiked" aria-pressed="false">已爬过</button>
+      </div>
+    </div>
+    <div class="quick-filter-group" role="group" aria-label="地区筛选">
+      <span class="quick-filter-label">地区</span>
+      <div class="location-selects">
+        <label class="sr-only" for="filter-province">省份</label>
+        <select id="filter-province"><option value="">全部省份</option></select>
+        <label class="sr-only" for="filter-city">城市</label>
+        <select id="filter-city"><option value="">全部城市</option></select>
+        <label class="sr-only" for="filter-district">区县</label>
+        <select id="filter-district"><option value="">全部区县</option></select>
+      </div>
+    </div>
+    <div class="quick-filter-group" role="group" aria-label="难度筛选">
+      <span class="quick-filter-label">难度</span>
+      <label class="sr-only" for="filter-difficulty">难度等级</label>
+      <select id="filter-difficulty">
+        <option value="">全部难度</option>
+        <option value="easy">简单 (≤200)</option>
+        <option value="moderate">一般 (201-300)</option>
+        <option value="hard">困难及以上 (&gt;300)</option>
+      </select>
+    </div>
+    <div class="quick-filter-group" role="group" aria-label="天数筛选">
+      <span class="quick-filter-label">天数</span>
+      <div class="segmented" id="filter-days-group">
+        <button type="button" id="filter-days-all" class="active" aria-pressed="true">全部</button>
+        <button type="button" id="filter-days-single" aria-pressed="false">单日</button>
+        <button type="button" id="filter-days-multi" aria-pressed="false">多日</button>
+      </div>
+    </div>
+  </div>
+  <div id="library-list" aria-live="polite"></div>
+</section>
+<section id="detail-view" hidden><div class="detail-layout">
+  <section class="route-card" id="detail" hidden>
+    <div class="route-overview">
+      <div class="route-title-group"><span id="route-type" class="eyebrow"></span><span id="overview-location" class="route-location" hidden></span></div>
+      <div class="stats key-stats">
+        <div><span>路线距离</span><strong id="stat-distance">—</strong></div><div><span>累计爬升</span><strong id="stat-ascent">—</strong></div>
+        <div><span>记录时长</span><strong id="stat-duration">—</strong></div><div><span>天数</span><strong id="stat-days">—</strong></div>
+        <div><span>难度分数</span><div id="stat-difficulty">—</div></div>
+      </div>
+      <details class="more-stats"><summary>更多数据</summary><div class="stats">
+        <div><span>累计下降</span><strong id="stat-descent">—</strong></div><div><span>最高海拔</span><strong id="stat-max">—</strong></div><div><span>最低海拔</span><strong id="stat-min">—</strong></div>
+        <div><span>移动时长</span><strong id="stat-moving">—</strong></div><div><span>平均速度</span><strong id="stat-speed">—</strong></div>
+        <div><span>平均 / 最高心率</span><strong id="stat-hr">—</strong></div><div><span>平均步频</span><strong id="stat-cad">—</strong></div>
+      </div></details>
+      <p class="hint" id="stats-note" hidden></p>
+    </div>
+    <div class="route-manage">
+      <div class="route-notes-panel">
+        <section><h2>备注</h2><p id="shared-notes" class="card-notes"></p></section>
+        <section id="related-section" hidden><h2>关联记录</h2><div id="related-records"></div></section>
+        <div id="elevation-actions" class="elevation-actions"><button id="sample-elevation">补全缺失海拔</button><p class="hint" id="elevation-note"></p></div>
+      </div>
+      <section class="photos-panel" id="photos-section">
+        <div class="photos-heading"><h2>沿途照片 <span id="photos-count" class="badge">0</span></h2><div class="photo-actions"><a id="open-photo-sync" class="button-link" hidden>同步备份照片</a><label for="photo-file-input" class="photo-upload-label">上传照片</label><input id="photo-file-input" type="file" multiple accept="image/*" class="sr-only"></div></div>
+        <div id="photo-upload-status" class="hint" role="status" hidden></div><div id="photos-list" class="photos-grid"></div>
+      </section>
+    </div>
+  </section>
+  <div class="map-controls">
+    <div class="map-toolbar">
+      <div class="segmented" role="group" aria-label="底图类型"><button id="satellite" class="active" aria-pressed="true">卫星</button><button id="street" aria-pressed="false">街道</button></div>
+      <button id="replay-open" aria-expanded="false" aria-controls="replay-panel">▶ 徒步回放</button>
+      <button id="fit-route">全览</button><button id="map-size" aria-expanded="true" aria-controls="workspace">缩小地图</button>
+      <details id="map-options" class="map-options"><summary>地图设置</summary><div class="map-options-panel">
+        <div class="layer-controls"><button id="terrain-toggle" class="active" aria-pressed="true">3D 地形</button><button id="labels-toggle" class="active" aria-pressed="true">道路 / 地名</button><button id="photos-toggle" class="active" aria-pressed="true">沿途照片</button></div>
+        <div class="metric-control"><span>轨迹着色</span><div id="color-metrics" class="segmented" role="group" aria-label="轨迹着色"><button data-metric="ele" aria-pressed="true" class="active">海拔</button><button data-metric="hr" aria-pressed="false">心率</button><button data-metric="speed" aria-pressed="false">速度</button><button data-metric="slope" aria-pressed="false">坡度</button><button data-metric="cad" aria-pressed="false">步频</button></div></div>
+      </div></details><button id="map-retry" hidden>重试地图</button>
+    </div>
+  </div>
+    <section class="workspace" id="workspace" hidden aria-label="地图和沿途参数曲线">
+      <div class="map-pane">
+        <div class="map-wrap">
+          <div id="map" role="region" aria-label="三维徒步路线地图"></div>
+          <div id="map-status" class="map-status" role="status">正在加载地图引擎…</div>
+        </div>
+      </div>
+      <section id="replay-panel" class="replay-panel" aria-label="徒步回放控制" hidden>
+        <div class="replay-controls">
+          <button id="replay-play" aria-pressed="false">暂停</button>
+          <label class="sr-only" for="replay-rate">回放倍速</label><select id="replay-rate"><option value="1">1×</option><option value="10">10×</option><option value="30">30×</option><option value="60" selected>60×</option><option value="120">120×</option><option value="300">300×</option><option value="600">600×</option></select>
+          <label class="replay-scrub" for="replay-progress"><span class="sr-only">回放进度</span><input id="replay-progress" type="range" min="0" max="1" step="1" value="0"></label>
+          <output id="replay-time"></output>
+          <button id="replay-follow" aria-pressed="true" title="手动调整地图后，点击恢复路线方向跟随">跟随路线</button><button id="replay-close" aria-label="退出回放">退出</button>
+        </div>
+        <div class="replay-meta"><div id="replay-data"></div><details class="replay-help"><summary id="replay-help-title">回放说明</summary><p id="replay-note"></p></details></div>
+      </section>
+      <aside id="replay-memories" class="replay-memories" aria-label="回放沿途照片" hidden>
+        <div class="replay-photo-heading"><strong>沿途照片</strong><span id="replay-photo-note"></span></div>
+        <figure id="replay-photo" hidden><div id="replay-photo-media" class="replay-photo-media"><img id="replay-photo-image" alt=""></div><figcaption id="replay-photo-caption"></figcaption></figure>
+        <div class="replay-album"><div id="replay-photos" aria-label="滚动浏览照片，点击跳转回放"></div></div>
+      </aside>
+      <section class="profile-card" id="profile-card" hidden>
+        <div class="profile-heading"><h2>沿途数据</h2><div id="profile-metrics" role="group" aria-label="选择展示参数"></div></div>
+        <div id="point-info" class="point-info-bar" aria-live="polite"></div>
+        <div id="profiles"></div>
+        <label class="scrub-label" for="route-position">沿途探索 <input id="route-position" type="range" min="0" max="29" value="0"><span id="position-label">起点</span></label>
+      </section>
+    </section>
+</div></section>
+</main>
+<dialog id="edit-dialog" aria-labelledby="edit-title">
+  <div class="page-heading"><h2 id="edit-title">编辑</h2><button id="close-edit" type="button" class="quiet" aria-label="取消编辑">取消</button></div>
+  <form id="edit-item">
+    <fieldset id="edit-fields"><label for="item-name">名称</label><input id="item-name" required maxlength="160">
+    <div class="form-row"><div><label for="item-days">天数</label><input id="item-days" type="number" min="1" max="3650" step="1" placeholder="自动计算"></div><div id="parent-field"><label for="item-parent">关联路线</label><select id="item-parent"></select></div></div>
+    <label for="item-notes">备注</label><textarea id="item-notes" rows="4" maxlength="10000"></textarea>
+    <p id="edit-error" class="form-error" role="alert" hidden></p>
+    <div class="dialog-footer"><button type="button" id="delete-item" class="danger quiet">删除此项</button><button type="submit" id="save-item" class="primary">保存修改</button></div></fieldset>
+  </form>
+</dialog>
+<dialog id="share-dialog" aria-labelledby="share-title"><div class="page-heading"><h2 id="share-title">分享</h2><button id="close-share" aria-label="关闭分享">关闭</button></div>
+<p id="share-name"></p><p class="hint">链接有效期内，任何持有链接的人都可免密码查看此项的轨迹、备注、沿途照片和统计。</p>
+<form id="create-share"><label for="share-days">有效期（天）</label><input id="share-days" type="number" min="1" max="365" step="1" value="7" required><div class="actions"><button type="submit" id="generate-share" class="primary">生成分享链接</button></div></form>
+<div id="share-result" hidden><label for="share-url">分享链接</label><input id="share-url" type="url" readonly><p id="share-expiry" class="hint" role="status"></p><button id="copy-share">复制链接</button></div></dialog>
+
+<dialog id="import-dialog" aria-labelledby="import-title">
+  <div class="page-heading"><h2 id="import-title">导入文件</h2><button id="close-import" class="quiet" aria-label="取消导入">取消</button></div>
+  <form id="import-form"><fieldset id="import-fields" class="import-panel">
+    <label class="drop-zone" id="drop-zone" for="file-input"><span class="upload-symbol" aria-hidden="true">↥</span><strong id="import-filename">选择或拖入轨迹文件</strong><span>GPX / GeoJSON · 最大 15 MB</span><input id="file-input" type="file" accept=".gpx,.geojson,.json" aria-label="选择轨迹文件"></label>
+    <label for="import-kind">保存为</label><select id="import-kind"><option value="route">路线</option><option value="record">记录</option></select>
+    <div id="import-parent-field" hidden><label for="import-parent">关联路线</label><select id="import-parent"><option value="">自动创建同名路线</option><option value="none">不关联路线</option></select></div>
+    <details class="import-options"><summary>坐标设置</summary><label for="coordinate-system">文件坐标系</label><select id="coordinate-system"><option value="WGS84">WGS84（GPS / 标准 GPX）</option><option value="GCJ02">GCJ-02（高德 / 腾讯）</option><option value="BD09">BD-09（百度）</option></select></details>
+    <p id="import-status" class="form-error" role="alert" hidden></p><div class="dialog-footer"><button id="confirm-import" class="primary" type="submit" disabled>导入</button></div>
+  </fieldset></form>
+</dialog>
+<dialog id="photo-lightbox" class="photo-lightbox" aria-labelledby="lightbox-title"><div class="lightbox-content"><button id="lightbox-close" class="lightbox-close" aria-label="关闭照片预览">✕</button><div id="lightbox-media" class="lightbox-media"><img id="lightbox-img" alt=""></div><div class="lightbox-info"><strong id="lightbox-title"></strong></div></div></dialog>
+<div id="notice" role="status" hidden></div><script type="module" src="js/app.js"></script>
+</body></html>

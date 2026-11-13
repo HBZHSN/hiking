@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>照片同步 · Hiking</title><link rel="stylesheet" href="style.css"></head>
+<body><header class="header"><a class="brand" href="./">Hiking</a><span class="header-spacer"></span><a id="back-record" href="./">← 返回记录</a></header>
+<main class="photo-sync-page">
+  <div class="page-heading"><h1>照片同步</h1><button id="scan-photos">更新照片</button></div>
+  <h2 id="sync-record-name"></h2>
+  <p id="sync-time-range" class="hint"></p>
+  <p class="hint">同步仅处理副本，备份原片保留。</p>
+  <p id="sync-status" role="status" aria-live="polite">正在读取记录…</p>
+  <div class="sync-toolbar"><button id="select-all-photos" disabled>全选</button><button id="clear-photo-selection" disabled>取消选择</button><span id="sync-selection-count">已选择 0 张</span><button id="sync-selected-photos" class="primary" disabled>同步所选照片</button></div>
+  <div id="sync-photos" class="sync-photo-grid"></div>
+  <ul id="sync-errors" class="sync-errors" hidden></ul>
+</main>
+<dialog id="photo-lightbox" class="photo-lightbox" aria-labelledby="lightbox-title"><div class="lightbox-content"><button id="lightbox-close" class="lightbox-close" aria-label="关闭照片预览">✕</button><div class="lightbox-media"><img id="lightbox-img" alt="照片大图预览"></div><div class="lightbox-info"><strong id="lightbox-title"></strong></div><p id="lightbox-status" class="hint" role="status"></p></div></dialog>
+<script type="module" src="js/photo-sync.js"></script></body></html>

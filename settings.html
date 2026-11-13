@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>系统设置 · Hiking</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header class="header"><a class="brand" href="/">Hiking</a><span class="header-spacer"></span><a href="/">返回路线库</a></header>
+<main class="settings-page">
+<div class="page-heading"><h1>系统设置</h1><button id="refresh-storage">刷新占用</button></div>
+<p id="settings-status" role="status" aria-live="polite"></p>
+<section aria-labelledby="storage-heading">
+<h2 id="storage-heading">服务器存储</h2>
+<div class="library-summary">
+<div class="summary-cell"><span>地图与资源缓存</span><strong id="cache-bytes">—</strong><p id="cache-files" class="hint"></p></div>
+<div class="summary-cell"><span>图片占用</span><strong id="photo-bytes">—</strong><p id="photo-files" class="hint"></p></div>
+<div class="summary-cell"><span>数据库占用</span><strong id="database-bytes">—</strong><p class="hint">包含 SQLite 日志与共享内存文件</p></div>
+<div class="summary-cell"><span>所在磁盘剩余空间</span><strong id="disk-free">—</strong><p id="disk-total" class="hint"></p></div>
+</div>
+<p class="hint">按服务器文件实际字节数统计，不含 iPhone 相册及浏览器缓存。图片包含上传处理中的临时文件；磁盘空间由同一磁盘上的所有应用共享。</p>
+</section>
+<section class="settings-card" aria-labelledby="shortcut-heading">
+<h2 id="shortcut-heading">iPhone 快捷指令</h2>
+
+<p id="shortcut-availability" role="status">正在检查下载文件…</p>
+<div class="shortcut-options">
+<div class="shortcut-block">
+  <h3>1. Hiking · 上传 GPX</h3>
+  <p class="hint">在文件 App 中分享 GPX 文件，或在快捷指令中直接运行选取文件。上传时选择保存为「路线」或「记录」。</p>
+  <div class="actions">
+    <a id="download-gpx-shortcut" class="button-link primary" href="/shortcuts/hiking-gpx.shortcut" hidden>下载「上传 GPX」快捷指令</a>
+    <a class="button-link" href="/shortcuts/hiking-gpx-unsigned.shortcut">下载 GPX 未签名源文件</a>
+  </div>
+</div>
+<div class="shortcut-block">
+  <h3>2. Hiking · 批量上传照片</h3>
+  <p class="hint">在照片 App 中多选照片分享，或直接运行批量选取照片。照片根据拍摄时间自动匹配并关联到对应徒步记录上。</p>
+  <div class="actions">
+    <a id="download-photos-shortcut" class="button-link primary" href="/shortcuts/hiking-photos.shortcut" hidden>下载「批量上传照片」快捷指令</a>
+    <a class="button-link" href="/shortcuts/hiking-photos-unsigned.shortcut">下载照片未签名源文件</a>
+  </div>
+</div>
+</div>
+<details class="shortcut-guide"><summary>配置步骤</summary><ol>
+<li>先点击下方按钮生成上传凭证，再下载并添加两个快捷指令。</li>
+<li>安装时填写服务器地址和上传凭证。手机需能访问该地址；公网使用 HTTPS，地址末尾不带斜杠。</li>
+<li>首次运行允许网络、照片及通知权限。照片权限受限时，只能找到已授权的照片。</li>
+<li>运行照片上传时保持快捷指令在前台；网络失败后可重新分享，已成功上传的相同照片会自动跳过。</li>
+</ol></details>
+<label for="shortcut-server">当前服务器地址</label><input id="shortcut-server" readonly>
+<div class="actions"><button id="create-shortcut-token">生成 / 替换上传凭证</button><button id="revoke-shortcut-token" class="danger">撤销上传凭证</button></div>
+<div id="shortcut-token-panel" hidden><label for="shortcut-token">上传凭证（仅本次显示，请复制到快捷指令）</label><textarea id="shortcut-token" readonly rows="2" spellcheck="false" autocomplete="off"></textarea><button id="copy-shortcut-token">复制上传凭证</button></div>
+<p id="shortcut-status" role="status" aria-live="polite"></p>
+<p class="hint">凭证仅用于导入，不提供数据读取和删除权限。替换、撤销或更改系统密码后，旧凭证失效。请勿分享已填好凭证的快捷指令。</p>
+<p class="hint">照片转换为最长边 720 像素的 JPEG；Live Photo 只上传静态图，不上传视频。按照片拍摄时间自动匹配记录及轨迹点位置。通知进度取决于 iOS 通知权限。</p>
+<details><summary>没有可安装文件时：在 iPhone 上手动创建</summary>
+<p>未签名源文件不能直接在 iPhone 安装。可在「快捷指令」中新建，分别创建以下两个快捷指令：</p>
+<h4>快捷指令一：Hiking · 上传 GPX</h4>
+<ol>
+  <li>开启「在共享表单中显示」，接收「文件」。</li>
+  <li>添加两个「文本」操作，填写服务器地址及上传凭证，分别设为变量「服务器地址」「上传凭证」。</li>
+  <li>判断输入：若快捷指令输入项目数为 1 则设为「GPX文件」，否则添加「选取文件」操作选取文件设为「GPX文件」。</li>
+  <li>添加「列表」操作，包含「路线」和「记录」；添加「从列表中选取」操作提示选择上传类型。</li>
+  <li>若所选项为「路线」，设「类型」为 <code>route</code>；否则设「类型」为 <code>record</code>。</li>
+  <li>先「获取 URL 内容」：URL 为「服务器地址」加 <code>/api/shortcut/gpx/preview?kind=</code> 加「类型」，POST，请求体选「文件」，文件选「GPX文件」。请求头 <code>Authorization: Bearer 上传凭证</code>、<code>X-Hiking-Kind: 类型</code>。检查响应中的 <code>error</code>，若有则显示并停止；将响应 <code>name</code> 设为「当前名称」。此步只预览，不保存。</li>
+  <li>添加「从菜单中选取」，提示「当前读取的名称：当前名称，是否重命名？」，选项为「保留原名」「重命名」。选择重命名时「询问输入」新名称（1～160 字符，默认填当前名称），为空则停止；对新名称「URL 编码」，将 <code>&amp;name=</code> 加编码结果作为「名称参数」。保留原名时「名称参数」为空。</li>
+  <li>再「获取 URL 内容」：URL 为「服务器地址」加 <code>/api/shortcut/gpx?kind=</code> 加「类型」加「名称参数」，POST，请求体及请求头同上。保存为记录时，记录和关联路线使用同一新名称。</li>
+  <li>检查响应中的 <code>error</code>，若有则显示并停止；成功则显示导入完成提示。</li>
+</ol>
+<h4>快捷指令二：Hiking · 批量上传照片</h4>
+<ol>
+  <li>开启「在共享表单中显示」，接收「图像」。</li>
+  <li>添加两个「文本」操作，填写服务器地址及上传凭证，分别设为变量「服务器地址」「上传凭证」。</li>
+  <li>判断输入：若快捷指令输入项目数大于 0 则设为「待上传照片」，否则添加「选取照片」操作（开启多选）设为「待上传照片」。</li>
+  <li>「重复每一项」待上传照片：获取照片拍摄日期，格式化为 <code>yyyy-MM-dd'T'HH:mm:ss.SSSXXX</code>；调整图像大小最长边为 720 并转换为 JPEG。</li>
+  <li>在循环内「获取 URL 内容」：URL 为「服务器地址」加 <code>/api/shortcut/photos</code>，POST，请求体为转换后的 JPEG。请求头包含 <code>Authorization: Bearer 上传凭证</code>、<code>X-Photo-Taken-At: 拍摄时间</code>、<code>Content-Type: image/jpeg</code>。服务端将自动根据拍摄时间关联到对应徒步记录。</li>
+  <li>检查响应 <code>error</code>，发送进度通知。全部完成后显示完成提示。</li>
+</ol>
+</details>
+</section>
+</main><script type="module" src="js/settings.js"></script></body></html>
