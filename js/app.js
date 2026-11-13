@@ -16,6 +16,7 @@ let pendingImportFile = null, importBusy = false, editBusy = false;
 let mapLoading = false, colorMetric = 'ele', ascending = false;
 let labels = true, maxMarker = null;
 let filterStatus = 'all', filterDays = 'all';
+const libraryMap = createLibraryMap();
 let replayMode;
 const replay = createReplay({
   getMap: () => mapReady ? map : null, resource, notify, showPoint,
@@ -585,7 +586,11 @@ $('map-retry').addEventListener('click',initMap);
 $('terrain-toggle').addEventListener('click',() => {replay.close();terrain=!terrain;updateMapMode();});
 for (const kind of ['satellite','street']) $(kind).addEventListener('click',() => {replay.close();mode=kind;updateMapMode();});
 
-async function loadMapLibrary() {
+let mapLibraryTask;
+function loadMapLibrary() {
+  return mapLibraryTask ||= loadMapScript().catch(error => { mapLibraryTask = null; throw error; });
+}
+async function loadMapScript() {
   for (const base of [resource('/api/maplibre/')]) {
     try {
       await new Promise((resolve,reject) => {
@@ -688,6 +693,137 @@ async function initMap() {
   finally {mapLoading=false;}
 }
 
+
+function createLibraryMap() {
+  let atlas, ready = false, loading = false, kind = 'route', popup;
+  const chosen = new Map();
+  const color = id => `hsl(${(id * 137.508) % 360}, 85%, 65%)`;
+  const message = text => { $('library-map-status').textContent = text; };
+  function renderPicker() {
+    const focused = document.activeElement?.dataset.mapItem;
+    const query = $('map-search').value.trim().toLocaleLowerCase();
+    const visible = items.filter(item => item.kind === kind &&
+      [item.name, item.location, item.notes].some(value => (value || '').toLocaleLowerCase().includes(query)));
+    $('map-pick-list').replaceChildren(...visible.map(item => {
+      const label = document.createElement('label'); label.className = 'map-pick-item';
+      const input = document.createElement('input'); input.type = 'checkbox'; input.checked = chosen.has(item.id);
+      input.dataset.mapItem = item.id;
+      input.addEventListener('change', () => choose(item, input.checked));
+      const swatch = document.createElement('span'); swatch.className = 'map-track-swatch'; swatch.style.background = color(item.id);
+      const text = document.createElement('span');
+      const name = document.createElement('strong'); name.textContent = item.name;
+      const meta = document.createElement('small');
+      meta.textContent = `${format(item.summary.distance / 1000, 'km', 1)}${item.location ? ' · ' + item.location : ''}${chosen.get(item.id)?.pending ? ' · 加载中…' : ''}`;
+      text.append(name, meta); label.append(input, swatch, text); return label;
+    }));
+    if (!visible.length) $('map-pick-list').textContent = query ? '没有符合条件的轨迹' : kind === 'route' ? '路线库暂无路线' : '记录库暂无记录';
+    if (focused) $('map-pick-list').querySelector(`[data-map-item="${focused}"]`)?.focus({preventScroll:true});
+    const records = items.filter(item => item.kind === 'record' && chosen.has(item.id)).length;
+    $('map-selection-count').textContent = `已选 ${chosen.size} 条（路线 ${chosen.size - records} / 记录 ${records}）`;
+    $('map-clear').disabled = !chosen.size;
+    $('map-fit-all').disabled = !ready || ![...chosen.values()].some(entry => entry.track);
+  }
+  async function choose(item, checked) {
+    popup?.remove();
+    if (!checked) { chosen.delete(item.id); draw(); renderPicker(); return; }
+    const entry = {pending:true}; chosen.set(item.id, entry); renderPicker();
+    try {
+      const data = await api(`/api/items/${item.id}`);
+      // A deselected or reselected item must not be restored by an older request.
+      if (chosen.get(item.id) !== entry) return;
+      entry.track = data.track; entry.pending = false;
+      draw(); renderPicker(); fit();
+    } catch (error) {
+      if (chosen.get(item.id) !== entry) return;
+      chosen.delete(item.id); renderPicker(); draw(); notify(`${item.name}：${error.message}`);
+    }
+  }
+  function draw() {
+    if (!ready) return;
+    const features = [];
+    for (const [id, entry] of chosen) {
+      for (const segment of entry.track?.segments || []) {
+        if (!segment.length) continue;
+        const coordinates = segment.map(point => [point.lng, point.lat]);
+        features.push({type:'Feature', properties:{id, color:color(id)}, geometry:{type:'LineString', coordinates}});
+      }
+    }
+    atlas.getSource('tracks').setData({type:'FeatureCollection', features});
+  }
+  function fit() {
+    if (!ready) return;
+    const bounds = new maplibregl.LngLatBounds();
+    for (const entry of chosen.values()) for (const segment of entry.track?.segments || [])
+      for (const point of segment) bounds.extend([point.lng, point.lat]);
+    if (bounds.isEmpty()) return;
+    const panel = $('map-picker'), mobile = matchMedia('(max-width: 600px)').matches;
+    atlas.fitBounds(bounds, {maxZoom:15, duration:500, padding:{top:70, right:60,
+      left:mobile ? 40 : panel.getBoundingClientRect().width + 36,
+      bottom:mobile ? panel.getBoundingClientRect().height + 50 : 60}});
+  }
+  function updateBase() {
+    if (!ready) return;
+    const base = $('library-map-base').value;
+    for (const name of ['satellite', 'street']) {
+      atlas.setLayoutProperty(name, 'visibility', name === base ? 'visible' : 'none');
+      atlas.setLayoutProperty(name + '-labels', 'visibility', name === base && $('library-map-labels').checked ? 'visible' : 'none');
+    }
+  }
+  async function init() {
+    if (atlas || loading) return;
+    loading = true; $('library-map-retry').hidden = true; message('正在加载地图…');
+    try {
+      const config = await api('/api/map-config'); await loadMapLibrary();
+      atlas = new maplibregl.Map({container:'library-map', center:[104,35], zoom:3, maxZoom:19,
+        attributionControl:false, style:{version:8, sources:{...config.sources,
+          tracks:{type:'geojson', data:{type:'FeatureCollection', features:[]}}}, layers:[
+          {id:'background', type:'background', paint:{'background-color':'#344738'}},
+          ...['satellite','street','satellite-labels','street-labels'].map(id => ({id, type:'raster', source:id,
+            layout:{visibility:id.startsWith('satellite') ? 'visible' : 'none'}, paint:{'raster-fade-duration':0}})),
+          {id:'tracks-outline', type:'line', source:'tracks', paint:{'line-color':'#26382e', 'line-width':7}},
+          {id:'tracks-line', type:'line', source:'tracks', layout:{'line-cap':'round','line-join':'round'}, paint:{'line-color':['get','color'], 'line-width':4}}
+        ]}});
+      atlas.addControl(new maplibregl.NavigationControl({showCompass:false}), 'bottom-right');
+      atlas.addControl(new maplibregl.AttributionControl({compact:true}), 'bottom-right');
+      atlas.on('load', () => {
+        ready = true; updateBase(); draw(); renderPicker(); atlas.resize(); fit();
+        message('勾选轨迹叠加查看，点击轨迹查看名称');
+      });
+      atlas.on('error', event => {
+        if (event.error?.name === 'AbortError') return;
+        message('地图加载失败，可重试；已选轨迹会保留。'); $('library-map-retry').hidden = false;
+      });
+        atlas.on('click', 'tracks-line', event => {
+          const item = items.find(item => item.id === Number(event.features[0]?.properties.id));
+          if (!item) return;
+          popup?.remove();
+          popup = new maplibregl.Popup().setLngLat(event.lngLat).setText(`${item.kind === 'record' ? '记录' : '路线'} · ${item.name}`).addTo(atlas);
+        });
+        atlas.on('mouseenter', 'tracks-line', () => { atlas.getCanvas().style.cursor = 'pointer'; });
+        atlas.on('mouseleave', 'tracks-line', () => { atlas.getCanvas().style.cursor = ''; });
+    } catch (error) {
+      atlas?.remove(); atlas = null; ready = false; message(error.message); $('library-map-retry').hidden = false;
+    } finally { loading = false; }
+  }
+  for (const value of ['route','record']) $('map-pick-' + value).addEventListener('click', () => {
+    kind = value;
+    for (const name of ['route','record']) { const node = $('map-pick-' + name); node.classList.toggle('active', name === kind); node.setAttribute('aria-pressed', name === kind); }
+    renderPicker();
+  });
+  $('map-search').addEventListener('input', renderPicker);
+  $('map-clear').addEventListener('click', () => { chosen.clear(); popup?.remove(); draw(); renderPicker(); });
+  $('map-fit-all').addEventListener('click', fit);
+  $('library-map-base').addEventListener('change', updateBase);
+  $('library-map-labels').addEventListener('change', updateBase);
+  $('library-map-retry').addEventListener('click', () => { if (loading) return; atlas?.remove(); atlas = null; ready = false; init(); });
+  return {
+    show() { renderPicker(); init(); if (ready) atlas.resize(); },
+    reset() {
+      const ids = [...chosen.keys()]; chosen.clear(); popup?.remove(); draw();
+      for (const id of ids) { const item = items.find(item => item.id === id); if (item) choose(item, true); }
+    }
+  };
+}
 
 async function api(path, options={}) {
   const response=await fetch(resource(path),{...options,headers:{'Content-Type':'application/json','X-Hiking-Request':'1'},body:options.body ? JSON.stringify(options.body) : undefined});
@@ -837,7 +973,7 @@ function renderParentOptions() {
 }
 function showLibrary() {
   clearSelection();renderLibrary();
-  $(matchMedia('(max-width: 600px), (pointer: coarse)').matches?(tab==='route'?'routes-tab':'records-tab'):'search').focus({preventScroll:true});
+  $(tab==='map'?'map-tab':matchMedia('(max-width: 600px), (pointer: coarse)').matches?(tab==='route'?'routes-tab':'records-tab'):'search').focus({preventScroll:true});
   restoreLibraryScroll();
 }
 function selectionUrl(id) {
@@ -912,6 +1048,15 @@ function libraryTable(visible) {
   return table;
 }
 function renderLibrary() {
+  const mapTab = tab === 'map';
+  document.body.classList.toggle('map-page', mapTab && !$('library-view').hidden);
+  $('map-view').hidden = !mapTab;
+  $('map-tab').classList.toggle('active', mapTab); $('map-tab').setAttribute('aria-pressed', mapTab);
+  if (mapTab) {
+    for (const id of ['routes-tab','records-tab']) { $(id).classList.remove('active'); $(id).setAttribute('aria-pressed', false); }
+    libraryMap.show();
+    return;
+  }
   $('quick-filters').hidden = tab !== 'route';
   if (tab === 'route') {
     updateLocationOptions();
@@ -981,6 +1126,7 @@ async function refreshLibrary() {
     item.summary={...stats,points:undefined,days:day.days,daysSource:data.track.days?'manual':times.length?'time':'default',date:times.length?Math.min(...times):null,
       difficulty:stats.partialElevation?null:difficulty(stats.distance,stats.ascent,day.days)};
   }
+  libraryMap.reset();
   renderParentOptions();renderLibrary();
 }
 async function selectItem(id, {historyUpdate=true}={}) {
@@ -995,6 +1141,7 @@ async function selectItem(id, {historyUpdate=true}={}) {
     history.pushState({fromLibrary:!selected},'',selectionUrl(id));
   }
   selected=data;
+  document.body.classList.remove('map-page');
   $('photo-upload-status').hidden=true;
   $('map-options').open=false;
   $('edit-dialog').close();
@@ -1055,7 +1202,7 @@ function clearSelection() {
   $('photos-toggle').setAttribute('aria-pressed', 'true');
   if(mapReady) map.getSource('route').setData({type:'FeatureCollection',features:[]});
 }
-for(const [id,kind] of [['routes-tab','route'],['records-tab','record']]) $(id).addEventListener('click',()=>{tab=kind;renderLibrary();});
+for(const [id,kind] of [['routes-tab','route'],['records-tab','record'],['map-tab','map']]) $(id).addEventListener('click',()=>{tab=kind;renderLibrary();});
 $('search').addEventListener('input',renderLibrary);
 $('import-kind').addEventListener('change',()=>{$('import-parent-field').hidden=$('import-kind').value!=='record';});
 $('open-edit').addEventListener('click',()=>{

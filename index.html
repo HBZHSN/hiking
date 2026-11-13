@@ -18,7 +18,7 @@
   <div class="page-heading"><h1>路线库</h1><button id="open-import" class="primary">导入文件</button></div>
   <div id="library-summary" class="library-summary"></div>
   <div class="library-navigation">
-    <div class="library-tabs" role="group" aria-label="内容类型"><button id="routes-tab" class="active" aria-pressed="true">路线</button><button id="records-tab" aria-pressed="false">记录</button></div>
+    <div class="library-tabs" role="group" aria-label="内容类型"><button id="routes-tab" class="active" aria-pressed="true">路线</button><button id="records-tab" aria-pressed="false">记录</button><button id="map-tab" aria-pressed="false">地图</button></div>
     <span id="result-count" role="status"></span>
     <div class="segmented view-switch" role="group" aria-label="展示方式"><button id="cards-view" class="active" aria-pressed="true">卡片</button><button id="table-view" aria-pressed="false">表格</button></div>
   </div>
@@ -70,6 +70,26 @@
     </div>
   </div>
   <div id="library-list" aria-live="polite"></div>
+  <section id="map-view" aria-label="多路线地图" hidden>
+    <div id="library-map" role="region" aria-label="记录与路线地图"></div>
+    <details id="map-picker" class="map-floating map-picker" open>
+      <summary>选择轨迹 <span id="map-selection-count" role="status">已选 0 条</span></summary>
+      <div class="map-picker-body">
+        <div class="segmented" role="group" aria-label="地图轨迹来源"><button id="map-pick-route" class="active" aria-pressed="true">路线库</button><button id="map-pick-record" aria-pressed="false">记录库</button></div>
+        <label for="map-search" class="sr-only">搜索地图中的名称、地区或备注</label><input id="map-search" type="search" placeholder="搜索名称、地区或备注">
+        <div id="map-pick-list"></div>
+        <div class="map-picker-footer"><span class="hint">可跨库多选，颜色对应轨迹</span><button id="map-clear" class="quiet" disabled>清空</button></div>
+      </div>
+    </details>
+    <div class="map-floating map-view-tools">
+      <button id="map-fit-all" disabled>全览已选</button>
+      <details id="library-map-options"><summary>地图设置</summary><div>
+        <label for="library-map-base">底图</label><select id="library-map-base"><option value="satellite">卫星</option><option value="street">街道</option></select>
+        <label><input id="library-map-labels" type="checkbox" checked> 道路 / 地名</label>
+      </div></details>
+    </div>
+    <div class="map-floating library-map-message"><span id="library-map-status" role="status">勾选路线或记录，在同一张地图上查看</span><button id="library-map-retry" hidden>重试地图</button></div>
+  </section>
 </section>
 <section id="detail-view" hidden><div class="detail-layout">
   <section class="route-card" id="detail" hidden>
