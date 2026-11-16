@@ -45,9 +45,9 @@ test('one profile keeps real-unit curves without min/max text after checkboxes',
   }
   assert.match(p.svg().innerHTML,/data-metric="hr" d="M20.00,139.58 L300.00,35.42 L580.00,97.92"/);
   assert.match(p.svg().innerHTML,/data-metric="ele" d="M20.00,139.58 L300.00,35.42 L580.00,97.92"/);
+  assert.match(p.svg().innerHTML,/class="profile-area" points="20\.00,150 20\.00,139\.58 300\.00,35\.42 580\.00,97\.92 580\.00,150"/);
   assert.match(p.$('point-info').textContent,/心率 150 bpm · 海拔 250 m · 速度 4 km\/h/);
   assert.doesNotMatch(p.$('point-info').textContent,/步频|坡度/);
-  assert.equal(p.$('workspace').style.height,'642px');
 });
 
 test('parameter changes persist and preserve the explored point; all parameters can be hidden',()=>{
@@ -65,15 +65,15 @@ test('parameter changes persist and preserve the explored point; all parameters 
   assert.equal(p.storage.get('profile-metrics'),'[]');
 });
 
-test('compact profile limits height and preserves the explored point on resize',()=>{
+test('redrawing profile preserves the explored point without mutating full-screen workspace height',()=>{
   const p = profile(points);
-  p.$('workspace').classList.contains=()=>true;
+  p.$('profile-card').classList.contains=()=>true;
   runInContext('renderProfile();showPoint(Number($("route-position").value));',p.context);
-  assert.equal(p.$('workspace').style.height,'480px');
+  assert.equal(p.$('workspace').style?.height, undefined);
   assert.match(p.$('point-info').textContent,/里程 0.50 km/);
-  p.$('workspace').classList.contains=()=>false;
+  p.$('profile-card').classList.contains=()=>false;
   runInContext('renderProfile();',p.context);
-  assert.equal(p.$('workspace').style.height,'642px');
+  assert.equal(p.$('workspace').style?.height, undefined);
 });
 
 test('missing values and segment starts break lines; zero, negatives and flat series stay finite',()=>{

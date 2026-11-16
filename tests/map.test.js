@@ -4,31 +4,63 @@ import {readFileSync} from 'node:fs';
 import {createContext,runInContext} from 'node:vm';
 
 const app = readFileSync(new URL('../js/app.js',import.meta.url),'utf8');
-const code = app.slice(app.indexOf("$('map-size').addEventListener"),app.indexOf('function fitRoute()'));
+const code = app.slice(app.indexOf('function updateHudMetrics()'),app.indexOf('function detailCameraPadding('));
 
-test('compact toggle preserves the map and explored point without a dialog',()=>{
-  const nodes = new Map(), calls=[];
+test('floating detail and profile toggles preserve explored point and refit map',()=>{
+  const nodes = new Map(), bodyClasses = new Set(), calls=[];
   const $ = id => {
     if (!nodes.has(id)) {
       const classes=new Set();
       nodes.set(id,{attributes:{},events:{},value:'2',
-        classList:{toggle(name){if(classes.delete(name))return false;classes.add(name);return true;}},
+        classList:{
+          toggle(name,force){const has=classes.has(name);const next=force===undefined?!has:Boolean(force);if(next)classes.add(name);else classes.delete(name);return next;},
+          contains(name){return classes.has(name);}
+        },
         setAttribute(key,value){this.attributes[key]=String(value);},
         addEventListener(key,handler){this.events[key]=handler;}});
     }
     return nodes.get(id);
   };
-  const context=createContext({$,mapReady:true,map:{resize:()=>calls.push('resize')},
-    renderProfile:()=>calls.push('profile'),showPoint:index=>calls.push(index)});
+  const document = {
+    body: { classList: {
+      toggle(name,force){const has=bodyClasses.has(name);const next=force===undefined?!has:Boolean(force);if(next)bodyClasses.add(name);else bodyClasses.delete(name);return next;},
+      contains(name){return bodyClasses.has(name);}
+    }},
+    documentElement: { style: { setProperty(){} } },
+    querySelector: () => null
+  };
+  const context=createContext({$,document,window:{innerWidth:1440},
+    renderProfile:()=>calls.push('profile'),showPoint:index=>calls.push(index),fitRoute:()=>calls.push('fit')});
   runInContext(code,context);
-  for (const compact of [true,false,true,false]) {
-    calls.length=0;
-    $('map-size').events.click();
-    assert.equal($('map-size').textContent,compact?'展开地图':'缩小地图');
-    assert.equal($('map-size').attributes['aria-expanded'],String(!compact));
-    assert.deepEqual(calls,['profile',2,'resize']);
-  }
-  assert.doesNotMatch(readFileSync(new URL('../index.html',import.meta.url),'utf8'),/id="map-dialog"|id="map-expand"/);
+
+  // Detail drawer toggle
+  $('detail-toggle').events.click();
+  assert.equal(bodyClasses.has('detail-collapsed'), true);
+  assert.equal($('detail-toggle').textContent, '展开详情');
+  assert.equal($('detail-toggle').attributes['aria-expanded'], 'false');
+  assert.deepEqual(calls, ['profile', 2, 'fit']);
+
+  calls.length = 0;
+  $('detail-toggle').events.click();
+  assert.equal(bodyClasses.has('detail-collapsed'), false);
+  assert.equal($('detail-toggle').textContent, '收起');
+  assert.equal($('detail-toggle').attributes['aria-expanded'], 'true');
+  assert.deepEqual(calls, ['profile', 2, 'fit']);
+
+  // Profile visibility and expand toggles
+  calls.length = 0;
+  $('profile-toggle').events.click();
+  assert.equal(bodyClasses.has('profile-collapsed'), true);
+  assert.equal($('profile-toggle').attributes['aria-expanded'], 'false');
+  assert.deepEqual(calls, ['profile', 2, 'fit']);
+
+  calls.length = 0;
+  $('profile-expand').events.click();
+  assert.equal($('profile-card').classList.contains('expanded'), true);
+  assert.equal($('profile-expand').textContent, '精简曲线');
+  assert.deepEqual(calls, ['profile', 2, 'fit']);
+
+  assert.doesNotMatch(readFileSync(new URL('../index.html',import.meta.url),'utf8'),/id="map-dialog"|id="map-expand"|id="map-size"/);
 });
 
 test('turning off 3D terrain clears false terrain error alert',()=>{

@@ -118,6 +118,7 @@ function updateRoute(next) {
   const days = routeDays(route);
   metric('stat-days',days.days,'天');
   $('stat-difficulty').replaceChildren(difficultyDisplay(stats.partialElevation ? null : difficulty(stats.distance,stats.ascent,days.days)));
+  $('detail-compact-summary').textContent = `${(stats.distance/1000).toFixed(2)} km${stats.ascent == null ? '' : ` · ↑${Math.round(stats.ascent).toLocaleString('zh-CN')} m`}${stats.duration ? ` · ${durationText(stats.duration)}` : ''}`;
   $('route-position').max = stats.count-1; $('route-position').value = 0;
   renderProfile(); showPoint(0);
   if (mapReady) { drawRoute(); fitRoute(); }
@@ -125,9 +126,6 @@ function updateRoute(next) {
 
 function renderProfile() {
   if (!stats) return;
-  const workspaceTop = $('workspace').getBoundingClientRect().top + window.scrollY;
-  const availableHeight = Math.max(400, window.innerHeight-workspaceTop-8);
-  $('workspace').style.height = `${$('workspace').classList.contains('compact') ? Math.min(480, availableHeight) : availableHeight}px`;
   const wrap=document.createElement('div'); wrap.className='chart-wrap';
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
   svg.setAttribute('preserveAspectRatio','none'); svg.setAttribute('role','img');
@@ -137,12 +135,13 @@ function renderProfile() {
   svg.setAttribute('aria-label',profileMetrics.filter(([key])=>shownMetrics.has(key)).map(([,label])=>label).join('、')+'沿途曲线');
   const bottom = 150, left = 20, width = profileWidth-40;
   const x = p => left+(stats.distance ? p.distance/stats.distance : 0)*width;
-  let markup = '', missing = [];
+  let markup = '<defs><linearGradient id="ele-area-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#39815c" stop-opacity="0.22"/><stop offset="100%" stop-color="#39815c" stop-opacity="0.02"/></linearGradient></defs>';
+  const missing = [];
   for (let i=0;i<3;i++) {
     const yy = 25+i*62.5;
-    markup += `<line x1="${left}" x2="${left+width}" y1="${yy}" y2="${yy}" stroke="#e9ede4" stroke-dasharray="4 5"/>`;
+    markup += `<line x1="${left}" x2="${left+width}" y1="${yy}" y2="${yy}" stroke="#e2e8dd" stroke-dasharray="4 5"/>`;
   }
-  for (let i=0;i<=4;i++) markup += `<text x="${left+i*width/4}" y="174" text-anchor="${i===0?'start':i===4?'end':'middle'}" fill="#6c7e76" font-size="11">${(stats.distance/1000*i/4).toFixed(1)} km</text>`;
+  for (let i=0;i<=4;i++) markup += `<text x="${left+i*width/4}" y="174" text-anchor="${i===0?'start':i===4?'end':'middle'}" fill="#5f7268" font-size="11">${(stats.distance/1000*i/4).toFixed(1)} km</text>`;
   for (const [key,label,unit,color] of profileMetrics) {
     if (!shownMetrics.has(key)) continue;
     const values = stats.points.map(p=>p[key]).filter(Number.isFinite);
@@ -153,6 +152,10 @@ function renderProfile() {
     let chunk = [];
     function flush() {
       if (!chunk.length) return;
+      if (key === 'ele' && chunk.length > 1) {
+        const areaPoints = [`${x(chunk[0]).toFixed(2)},${bottom}`, ...chunk.map(p => `${x(p).toFixed(2)},${y(p).toFixed(2)}`), `${x(chunk.at(-1)).toFixed(2)},${bottom}`].join(' ');
+        markup += `<polygon class="profile-area" points="${areaPoints}" fill="url(#ele-area-grad)"/>`;
+      }
       const path = chunk.map((p,i) => `${i ? 'L' : 'M'}${x(p).toFixed(2)},${y(p).toFixed(2)}`).join(' ');
       markup += `<path data-metric="${key}" d="${path}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"/>`;
       if (chunk.length===1) markup += `<circle cx="${x(chunk[0])}" cy="${y(chunk[0])}" r="2" fill="${color}"/>`;
@@ -161,8 +164,8 @@ function renderProfile() {
     for (const p of stats.points) { if (p.start || !Number.isFinite(p[key])) flush(); if (Number.isFinite(p[key])) chunk.push(p); } flush();
   }
   const message = !shownMetrics.size ? '勾选上方参数查看曲线' : missing.length ? `${missing.join('、')}无数据` : '';
-  if (message) markup += `<text x="${profileWidth/2}" y="18" text-anchor="middle" fill="#6c7e76" font-size="11">${message}</text>`;
-  markup += `<line class="profile-cursor" x1="${left}" x2="${left}" y1="20" y2="150" stroke="#b59b52" stroke-dasharray="3 3"/>`;
+  if (message) markup += `<text x="${profileWidth/2}" y="18" text-anchor="middle" fill="#5f7268" font-size="11">${message}</text>`;
+  markup += `<line class="profile-cursor" x1="${left}" x2="${left}" y1="20" y2="150" stroke="#c98b32" stroke-width="1.5" stroke-dasharray="3 3"/>`;
   svg.innerHTML = markup;
 }
 function showPoint(index) {
@@ -256,19 +259,98 @@ $('sample-elevation').addEventListener('click',async () => {
   }
 });
 
-$('map-size').addEventListener('click', () => {
-  const compact = $('workspace').classList.toggle('compact');
-  $('map-size').textContent = compact ? '展开地图' : '缩小地图';
-  $('map-size').setAttribute('aria-expanded', !compact);
+function updateHudMetrics() {
+  if (typeof document === 'undefined' || !document.body?.classList?.contains('detail-page')) return;
+  const headerRect = $('header-detail')?.getBoundingClientRect?.();
+  const controlsRect = document.querySelector('.map-controls')?.getBoundingClientRect?.();
+  const topEdge = Math.max(headerRect?.bottom || 0, controlsRect?.bottom || 0, 76);
+  document.documentElement.style.setProperty('--hud-top', `${Math.ceil(topEdge)}px`);
+}
+function setDetailExpanded(expanded) {
+  document.body.classList.toggle('detail-collapsed', !expanded);
+  $('detail-toggle').textContent = expanded ? '收起' : '展开详情';
+  $('detail-toggle').setAttribute('aria-expanded', String(expanded));
+}
+function setProfileVisible(visible) {
+  document.body.classList.toggle('profile-collapsed', !visible);
+  $('profile-toggle').classList.toggle('active', visible);
+  $('profile-toggle').setAttribute('aria-pressed', String(visible));
+  $('profile-toggle').setAttribute('aria-expanded', String(visible));
+}
+function setProfileExpanded(expanded) {
+  $('profile-card').classList.toggle('expanded', expanded);
+  $('profile-expand').textContent = expanded ? '精简曲线' : '放大曲线';
+  $('profile-expand').setAttribute('aria-expanded', String(expanded));
+}
+$('detail-toggle').addEventListener('click', () => {
+  const expanded = document.body.classList.contains('detail-collapsed');
+  if (expanded && window.innerWidth <= 800) setProfileVisible(false);
+  setDetailExpanded(expanded);
   renderProfile(); showPoint(Number($('route-position').value));
-  if (mapReady) map.resize();
+  fitRoute();
 });
+$('profile-toggle').addEventListener('click', () => {
+  const visible = document.body.classList.contains('profile-collapsed');
+  if (visible && window.innerWidth <= 800) setDetailExpanded(false);
+  setProfileVisible(visible);
+  renderProfile(); showPoint(Number($('route-position').value));
+  fitRoute();
+});
+$('profile-collapse').addEventListener('click', () => {
+  setProfileVisible(false);
+  fitRoute();
+});
+$('profile-expand').addEventListener('click', () => {
+  setProfileExpanded(!$('profile-card').classList.contains('expanded'));
+  renderProfile(); showPoint(Number($('route-position').value));
+  fitRoute();
+});
+if (typeof ResizeObserver !== 'undefined') {
+  const hudObserver = new ResizeObserver(() => updateHudMetrics());
+  for (const node of [$('header-detail'), document.querySelector('.map-controls')]) {
+    if (node) hudObserver.observe(node);
+  }
+}
+
+function detailCameraPadding(width, height) {
+  const mobile = typeof window !== 'undefined' && window.innerWidth <= 800;
+  const headerBottom = $('header-detail')?.getBoundingClientRect?.().bottom || 0;
+  const controlsBottom = document.querySelector('.map-controls')?.getBoundingClientRect?.().bottom || 0;
+  const topHud = Math.max(headerBottom, controlsBottom, mobile ? 72 : 84);
+  let top = Math.min(height * 0.35, Math.round(topHud + 20));
+  let left = mobile ? 24 : 40;
+  let right = mobile ? 24 : 76;
+  let bottom = 44;
+  if (!mobile) {
+    if (!$('detail').hidden && !document.body.classList.contains('detail-collapsed')) {
+      const rect = $('detail').getBoundingClientRect?.();
+      if (rect?.width) left = Math.min(width * 0.42, Math.round(rect.width + 36));
+    }
+    if (!$('profile-card').hidden && !document.body.classList.contains('profile-collapsed')) {
+      const rect = $('profile-card').getBoundingClientRect?.();
+      if (rect?.height) bottom = Math.min(height * 0.42, Math.round(rect.height + 44));
+    }
+  } else {
+    const detailOpen = !$('detail').hidden && !document.body.classList.contains('detail-collapsed');
+    const profileOpen = !$('profile-card').hidden && !document.body.classList.contains('profile-collapsed');
+    const activeSheet = detailOpen ? $('detail') : profileOpen ? $('profile-card') : null;
+    const rect = activeSheet?.getBoundingClientRect?.();
+    if (rect?.height) bottom = Math.min(height * 0.48, Math.round(rect.height + 30));
+    else bottom = 74;
+  }
+  if (top + bottom > height * 0.7) {
+    const scale = (height * 0.7) / (top + bottom);
+    top = Math.round(top * scale);
+    bottom = Math.round(bottom * scale);
+  }
+  return { top, bottom, left, right };
+}
 
 function fitRoute() {
   if (!mapReady || !stats || $('detail-view').hidden || replay.active) return;
   map.resize(); map.stop();
   const width = $('map').clientWidth, height = $('map').clientHeight;
-  const camera = routeCamera(stats.points, width, height, terrain);
+  const camera = routeCamera(stats.points, width, height, terrain, detailCameraPadding(width, height));
   if (!camera) return;
   map.jumpTo({ center: camera.center, zoom: camera.zoom, bearing: camera.bearing, pitch: camera.pitch });
 }
@@ -1141,7 +1223,11 @@ async function selectItem(id, {historyUpdate=true}={}) {
     history.pushState({fromLibrary:!selected},'',selectionUrl(id));
   }
   selected=data;
-  document.body.classList.remove('map-page');
+  document.body.classList.remove('map-page', 'replay-active');
+  document.body.classList.add('detail-page');
+  setDetailExpanded(true);
+  setProfileExpanded(false);
+  setProfileVisible(typeof window === 'undefined' || window.innerWidth > 800);
   $('photo-upload-status').hidden=true;
   $('map-options').open=false;
   $('edit-dialog').close();
@@ -1183,6 +1269,7 @@ async function selectItem(id, {historyUpdate=true}={}) {
   $('related-section').hidden=!$('related-records').children.length;
   updateRoute(data.track);
   window.scrollTo(0,0);
+  requestAnimationFrame(() => { updateHudMetrics(); if (mapReady) fitRoute(); });
   if(!map) initMap();else {map.resize();fitRoute();}
   loadPhotos(id);
   $(sharePrefix ? 'route-name' : 'back-library').focus();
@@ -1191,6 +1278,8 @@ function clearSelection() {
   replay.close(); collapsePhoto(); $('photo-lightbox').close();
   $('edit-dialog').close();$('map-options').open=false;
   selected=null;route=null;stats=null;selectionVersion++;cancelElevation();
+  document.body.classList.remove('detail-page', 'detail-collapsed', 'profile-collapsed', 'replay-active');
+  setProfileExpanded(false);
   $('library-view').hidden=false;$('detail-view').hidden=true;$('workspace').hidden=true;document.title='路线库 · Hiking';
   $('header-library').hidden=false;$('header-detail').hidden=true;
   $('detail').hidden=true;$('profile-card').hidden=true;
@@ -1390,7 +1479,7 @@ document.querySelector('.more-stats').addEventListener('toggle',()=>{
   if(stats && !$('detail-view').hidden){renderProfile();showPoint(Number($('route-position').value));if(mapReady)map.resize();}
 });
 let resizeTimer;
-window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(stats && !$('detail-view').hidden){renderProfile();showPoint(Number($('route-position').value));}fitRoute();},150);});
+window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(stats && !$('detail-view').hidden){updateHudMetrics();renderProfile();showPoint(Number($('route-position').value));}fitRoute();},150);});
 if (sharePrefix) {
   for (const id of ['library-view','header-library','back-library','open-share','system-settings','logout','open-edit','edit-item','related-records','elevation-actions']) $(id).hidden=true;
   $('header-detail').hidden=false;
@@ -1484,11 +1573,14 @@ function createReplay({ getMap, prepareMap, restoreMap, showPoint, resource, not
     pause(); livePlayer.stop();
     if (!active) return;
     active = false; marker?.remove(); marker = null;
+    document.body.classList.remove('replay-active');
     $('replay-panel').hidden = true; $('replay-photo').hidden = true; $('replay-memories').hidden = true;
     $('replay-open').setAttribute('aria-expanded', 'false');
+    updateHudMetrics();
     getMap()?.resize();
     restoreMap();
     getMap()?.jumpTo(camera);
+    renderProfile(); showPoint(Number($('route-position').value));
   }
   function render(selectedPhoto) {
     if (!active) return;
@@ -1539,10 +1631,13 @@ function createReplay({ getMap, prepareMap, restoreMap, showPoint, resource, not
     camera = { center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() };
     prepareMap(); map.stop();
     active = true; elapsed = 0; pointIndex = -1; photoId = undefined;
+    document.body.classList.add('replay-active');
+    $('map-options').open = false;
     map.jumpTo({zoom: 16, pitch: 65, bearing: replayHeading(points, 0) ?? camera.bearing});
     follow(true);
     $('replay-panel').hidden = false;
     $('replay-memories').hidden = !photos.length;
+    updateHudMetrics();
     map.resize();
     $('replay-open').setAttribute('aria-expanded', 'true');
     const el = document.createElement('div'); el.className = 'replay-walker'; el.textContent = '●'; el.setAttribute('aria-label', '当前徒步位置');

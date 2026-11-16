@@ -115,10 +115,14 @@ with TemporaryDirectory() as directory:
                 assert page.locator('#replay-photos button').first.get_attribute('aria-current') == 'true'
                 if width > 1000:
                     map_box = page.locator('#map').bounding_box()
+                    assert map_box['width'] == width and map_box['height'] == 1000, map_box
+                    memories_box = page.locator('#replay-memories').bounding_box()
+                    panel_box = page.locator('#replay-panel').bounding_box()
                     photo_box = page.locator('#replay-photo-image').bounding_box()
-                    assert photo_box['x'] >= map_box['x'] + map_box['width'], 'photo must not cover map'
+                    assert memories_box['x'] + memories_box['width'] <= width
+                    assert memories_box['y'] + memories_box['height'] <= panel_box['y']
                     assert photo_box['width'] >= 210 and photo_box['height'] >= 200, photo_box
-                    assert page.locator('#replay-panel').bounding_box()['height'] < 90
+                    assert panel_box['height'] < 90
                     rail = page.locator('#replay-photos')
                     assert rail.evaluate('e => e.scrollHeight > e.clientHeight'), rail.evaluate('e => ({scroll:e.scrollHeight,client:e.clientHeight,rows:getComputedStyle(e).gridTemplateRows})')
                     rail.hover()
@@ -173,7 +177,7 @@ with TemporaryDirectory() as directory:
                 assert page.locator('#replay-photo').is_hidden()
                 if width > 1000:
                     assert page.locator('#replay-memories').bounding_box()['width'] == 84
-                    assert page.locator('#map').bounding_box()['width'] > map_box['width']
+                    assert page.locator('#map').bounding_box()['width'] == width
                 assert page.locator('#replay-photos button[aria-current="true"]').count() == 0
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
                 page.screenshot(path=f'/tmp/hiking-replay-{width}.png', full_page=True)

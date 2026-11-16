@@ -7,8 +7,10 @@
     <a id="system-settings" href="settings.html">系统设置</a><a href="credits.html" target="_blank" rel="noreferrer">数据来源</a><button id="logout" class="quiet">退出登录</button>
   </div>
   <div id="header-detail" class="header-detail" hidden>
-    <button id="back-library" class="quiet">← 路线库</button>
-    <div class="detail-title"><h1 id="route-name" tabindex="-1">请选择路线</h1><span id="route-location" class="route-location" hidden></span></div>
+    <div class="header-detail-main">
+      <button id="back-library" class="quiet">← 路线库</button>
+      <div class="detail-title"><h1 id="route-name" tabindex="-1">请选择路线</h1><span id="route-location" class="route-location" hidden></span></div>
+    </div>
     <div class="actions"><button id="parent-route" class="quiet" hidden>所属路线</button><button id="open-edit">编辑</button><button id="export-item">导出 GPX</button><button id="open-share" class="primary">分享</button></div>
   </div>
 </header>
@@ -93,8 +95,16 @@
 </section>
 <section id="detail-view" hidden><div class="detail-layout">
   <section class="route-card" id="detail" hidden>
+    <div class="detail-drawer-head">
+      <div class="detail-drawer-meta">
+        <span id="route-type" class="eyebrow"></span>
+        <span id="detail-compact-summary" class="detail-compact-summary"></span>
+      </div>
+      <button type="button" id="detail-toggle" class="quiet detail-toggle-btn" aria-expanded="true" aria-controls="detail-body">收起</button>
+    </div>
+    <div id="detail-body" class="detail-body">
     <div class="route-overview">
-      <div class="route-title-group"><span id="route-type" class="eyebrow"></span><span id="overview-location" class="route-location" hidden></span></div>
+      <div class="route-title-group"><span id="overview-location" class="route-location" hidden></span></div>
       <div class="stats key-stats">
         <div><span>路线距离</span><strong id="stat-distance">—</strong></div><div><span>累计爬升</span><strong id="stat-ascent">—</strong></div>
         <div><span>记录时长</span><strong id="stat-duration">—</strong></div><div><span>天数</span><strong id="stat-days">—</strong></div>
@@ -118,12 +128,13 @@
         <div id="photo-upload-status" class="hint" role="status" hidden></div><div id="photos-list" class="photos-grid"></div>
       </section>
     </div>
+    </div>
   </section>
   <div class="map-controls">
     <div class="map-toolbar">
       <div class="segmented" role="group" aria-label="底图类型"><button id="satellite" class="active" aria-pressed="true">卫星</button><button id="street" aria-pressed="false">街道</button></div>
       <button id="replay-open" aria-expanded="false" aria-controls="replay-panel">▶ 徒步回放</button>
-      <button id="fit-route">全览</button><button id="map-size" aria-expanded="true" aria-controls="workspace">缩小地图</button>
+      <button id="fit-route">全览</button><button id="profile-toggle" class="active" aria-pressed="true" aria-expanded="true" aria-controls="profile-card">沿途曲线</button>
       <details id="map-options" class="map-options"><summary>地图设置</summary><div class="map-options-panel">
         <div class="layer-controls"><button id="terrain-toggle" class="active" aria-pressed="true">3D 地形</button><button id="labels-toggle" class="active" aria-pressed="true">道路 / 地名</button><button id="photos-toggle" class="active" aria-pressed="true">沿途照片</button></div>
         <div class="metric-control"><span>轨迹着色</span><div id="color-metrics" class="segmented" role="group" aria-label="轨迹着色"><button data-metric="ele" aria-pressed="true" class="active">海拔</button><button data-metric="hr" aria-pressed="false">心率</button><button data-metric="speed" aria-pressed="false">速度</button><button data-metric="slope" aria-pressed="false">坡度</button><button data-metric="cad" aria-pressed="false">步频</button></div></div>
@@ -153,7 +164,7 @@
         <div class="replay-album"><div id="replay-photos" aria-label="滚动浏览照片，点击跳转回放"></div></div>
       </aside>
       <section class="profile-card" id="profile-card" hidden>
-        <div class="profile-heading"><h2>沿途数据</h2><div id="profile-metrics" role="group" aria-label="选择展示参数"></div></div>
+        <div class="profile-heading"><h2>沿途数据</h2><div id="profile-metrics" role="group" aria-label="选择展示参数"></div><div class="profile-actions"><button type="button" id="profile-expand" class="quiet" aria-expanded="false">放大曲线</button><button type="button" id="profile-collapse" class="quiet" aria-label="收起沿途曲线">收起</button></div></div>
         <div id="point-info" class="point-info-bar" aria-live="polite"></div>
         <div id="profiles"></div>
         <label class="scrub-label" for="route-position">沿途探索 <input id="route-position" type="range" min="0" max="29" value="0"><span id="position-label">起点</span></label>
