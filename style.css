@@ -297,7 +297,7 @@ body.detail-collapsed #detail{width:max-content;max-width:min(480px,calc(100vw -
 body.detail-collapsed .detail-drawer-head{border-bottom:0;padding:6px 8px 6px 12px}
 body.detail-collapsed .detail-compact-summary{display:inline}
 body.detail-collapsed #detail-body{display:none}
-body.replay-active #detail{display:none}
+body.replay-active #detail,body.replay-active #profile-toggle{display:none}
 
 .detail-body{
   overflow-y:auto;overflow-x:hidden;min-height:0;overscroll-behavior:contain;

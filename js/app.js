@@ -458,7 +458,7 @@ function renderPhotos() {
 
     const tag = document.createElement('span');
     tag.className = 'photo-match-tag';
-    tag.textContent = photo.match_type === 'time' ? '⏱ 时间' : photo.match_type === 'gps' ? '📍 GPS' : '无位置';
+    tag.textContent = photo.match_type === 'time' ? '时间' : photo.match_type === 'gps' ? 'GPS' : '无位置';
 
     const del = document.createElement('button');
     del.type = 'button';
